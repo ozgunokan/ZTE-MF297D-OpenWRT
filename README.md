@@ -85,6 +85,13 @@ Telnet açma işlemi için WAN kullanılır; ne zaman LAN'a dönüleceği orada 
 PC Ethernet **192.168.1.2/24**, modem **192.168.1.1**. Ethernet ağ geçidi/DNS
 boş; PC'nin internet için kullandığı Wi-Fi değişmeyecek.
 
+> **Windows 10/11 + WSL2 notu:** Ayrı bir Ubuntu bilgisayarı veya VMware kurmadan
+> Windows üzerinde `wsl --install -d Ubuntu-24.04` ile kurulan WSL2 Ubuntu
+> terminalinden tüm **PC Ubuntu** adımları çalıştırılabilir. Evdeki ana router'ınız
+> da `192.168.1.1` kullanıyorsa, kurulum sırasında IP çakışmasını önlemek için
+> ana ağdan geçici olarak ayrılın veya ikinci bir Ethernet adaptöründe ayrı alt ağ
+> kullanın.
+
 ## İndir
 
 [Bütün dosyalar — Release](https://github.com/ozgunokan/ZTE-MF297D-OpenWRT/releases/tag/mf297d-2026.11.20-install-kit.3)
@@ -319,6 +326,78 @@ SIM/APN'yi ayarla. Genel imaj kişisel Wi-Fi şifresi taşımaz ve radyolar baş
 İlk kurulumun başarılı sayılması için normal açılış ve RESET kurtarma geri dönüşü
 cihaz üzerinde ayrıca doğrulanmalıdır. Kitin yeni sürümünde bu canlı uçtan uca
 test henüz yapılmadı; çevrimdışı testler bunun yerine geçmez.
+
+## Sık karşılaşılan sorunlar ve kurulum sonrası notlar
+
+Aşağıdaki maddeler gerçek Turkcell B18 → OpenWrt + NSS → `fit-v1` / LuCI sysupgrade
+kurulumunda doğrudan karşılaşılmış sorunlar ve çözümleridir:
+
+### Kurulum sırasında
+
+- **1B (ACS) adımında cihaz görünmüyor veya DNS/port çakışıyor:**
+  Stok panelde çalışma modunun **Kablolu genişbant** ve WAN türünün **DHCP**
+  yapıldığından emin ol. Windows'ta **Internet Connection Sharing (`SharedAccess`)**
+  servisi `UDP/53` portunu tutuyorsa yerel DNS servisiyle çakışabilir; işlem
+  sırasında `SharedAccess` servisini durdur.
+- **`MF297D-Stok-RAM --boot` sırasında `can't create /sys/bus/platform/drivers/dwc3/unbind: File exists`:**
+  Bazı durumlarda önceki aktarım adımında Telnet kabuğunda `set -C` (noclobber)
+  açık kalabiliyor. `boot.py` üzerinden çalıştırırken `quiesce()` öncesinde
+  `set +C` çalıştırılması gerekir.
+- **3B (`--phase-a`) adımında `kexec_load failed: Resource busy` (`Can't kexec: CPUs are stuck in the kernel`):**
+  Stok RAM DTB'sinde `maxcpus=1` kullanıldığında açılışta `S18mf297d-cpu` servisi
+  `cpu1`'i çevrimiçi yapmayı dener; stok boot akışında bu işlem başarısız olunca
+  çekirdek `cpus_stuck_in_kernel` sayacını artırır ve `kexec` reddedilir.
+  Çözüm, geçici stok RAM DTB'sinde `maxcpus=1` yerine `nr_cpus=1` kullanıp
+  (`build.py` ile CRC ve modülleri birlikte) yeniden derlemektir. Bu değişiklik
+  yalnız geçici RAM yükleyicisini etkiler; kalıcı NAND OpenWrt yine `0-1` çift
+  çekirdek açılır.
+- **`prepare_install.py` ile `--phase-a` arasında modemi yeniden başlatınca `mtd17ro` / `mtd18ro` doğrulama hatası:**
+  `mtd17` (`cfg-param`) ve `mtd18` (`log`) stok B18 her açıldığında güncellenir.
+  `prepare_install.py` sonrası stok sisteme yeniden girilirse `--phase-a` hiçbir
+  flash yazımı yapmadan güvenli şekilde durur. Hazırlık adımını kesintisiz aynı
+  RAM oturumunda tamamla veya stok açılışı sonrası güncel hash'lerle yeniden hazırla.
+- **İlk kurulum sonrası LuCI'den `...-sysupgrade.bin` (ör. DivineWRT) yüklenmiyor:**
+  İlk kurulum kitinin (`install-kit.3`) yazdığı U-Boot ENV sabit kernel CRC'sine
+  kilitlidir ve LuCI sysupgrade kancası (`/lib/upgrade/mf297d.sh`) henüz kurulu
+  değildir. Önce tek seferlik **`fit-v1`** geçişini
+  ([SYSUPGRADE-BOOTSTRAP.md](docs/SYSUPGRADE-BOOTSTRAP.md)) uygulaman gerekir.
+  *(Not: `6.18.60` kurtarma imajıyla kurulan cihazlarda eski `6.18.55` sürüm
+  denetimi ve stok kurucunun eklediği son `bootipq` yedeği nedeniyle betik
+  uyumluluğunu geçiş öncesi kontrol et.)* `fit-v1` tamamlandıktan sonra tüm
+  sonraki `...-sysupgrade.bin` güncellemeleri doğrudan LuCI'den tek tıkla yapılır.
+
+### Kurulum sonrasında (Wi-Fi, LTE ve ağ ayarları)
+
+- **Wi-Fi görünmüyor:**
+  Temiz OpenWrt / DivineWRT kurulumunda güvenlik gereği 2.4 GHz ve 5 GHz radyoları
+  varsayılan olarak kapalı (`disabled='1'`) gelir. LuCI → **Network → Wireless**
+  üzerinden şifre belirleyip bölge kodunu **TR** seçerek radyoları etkinleştir.
+- **SIM kart takılı ama LTE kendiliğinden bağlanmıyor:**
+  `lte` arayüzü de ilk kurulumda varsayılan olarak kapalı (`auto='0'`,
+  `autoconnect='0'`) gelir. Her açılışta otomatik bağlanması için LuCI →
+  **Network → Interfaces → `lte` → Edit** menüsünden **Bring up on boot**
+  seçeneğini aç (veya SSH ile `uci set network.lte.auto='1'`,
+  `uci set network.lte.autoconnect='1'`, `uci commit network`, `ifup lte`).
+  İlk bağlantıda QMI modemi SIM'i 1–2 kez yeniden başlatabilir; 15–30 saniye
+  içinde `wwan0` IP alır.
+- **Başka bir router'a (ör. Keenetic `192.168.1.1`) LAN'dan bağlayınca kablosuz internet kesiliyor:**
+  Aynı ağda iki DHCP sunucusu çakışır. MF297D'yi erişim noktası (AP) olarak
+  mevcut router'ın LAN portuna bağlayacaksan:
+  1. MF297D LAN IP'sini boş bir adrese al (ör. `192.168.1.100`).
+  2. **Network → Interfaces → `lan` → DHCP Server** sekmesinde **Ignore interface**
+     işaretle; IPv6 sekmesinde **RA / DHCPv6 / NDP** seçeneklerini **disabled** yap.
+  3. MF297D'nin kendi güncellemeleri için `lan` **IPv4 gateway** ve **DNS**
+     alanına ana router IP'sini (`192.168.1.1`) yaz.
+- **AP modundan bağımsız LTE / Xray router kullanımına geçince telefon bağlanamıyor veya internete çıkamıyor:**
+  İki noktayı kontrol et:
+  1. AP modu için eklenen `network.lan.gateway` ve `network.lan.dns` kayıtlarını
+     mutlaka sil; aksi hâlde Ethernet çıkarıldığında trafik `wwan0` (LTE) yerine
+     olmayan statik ağ geçidine gitmeye çalışır.
+  2. `dnsmasq`, Ethernet kablosu ana router'a takılıyken yeniden başlatıldıysa
+     ağda başka DHCP sunucusu gördüğü için kendi DHCP'sini başlatmayı reddedebilir
+     (`refusing to start`). Ethernet kablosunu çıkardıktan sonra `dnsmasq`
+     servisini yeniden başlat veya bağımsız kullanım için `dhcp.lan.force='1'`
+     ayarını aç.
 
 ## Kaynak ve test
 
