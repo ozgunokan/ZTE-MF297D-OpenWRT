@@ -22,7 +22,7 @@ python3 nss/tools/install-upgrade-support.py \
   --backup ~/MF297D-upgrade-support-backup
 ```
 
-Bu komut flash yazmaz. ENV, ayarlar, kurtarma kopyası ve korunan hacim hash'leri yedeklenir; yalnız bu ENV'ye uyan yardımcı hazırlanır. Gereken düzen: UBI 1/2 radyo firmware'leri, 4 kernel, 5 rootfs, 6 ayarlar, 7 kurtarma; 6.18.55 kurtarma/bakım çekirdeği. Farklı düzen reddedilir.
+Bu komut flash yazmaz. ENV, ayarlar, kurtarma kopyası ve korunan hacim hash'leri yedeklenir; yalnız bu ENV'ye uyan yardımcı hazırlanır. Gereken düzen: UBI 1/2 radyo firmware'leri, 4 kernel, 5 rootfs, 6 ayarlar, 7 kurtarma; 6.18.55 veya 6.18.60 kurtarma/bakım çekirdeği. Farklı düzen reddedilir.
 
 ## 2. PC Ubuntu: bir temiz açılış
 
@@ -82,7 +82,7 @@ ssh -o HostKeyAlias=mf297d-maintenance root@192.168.1.1 \
   'uname -r; cat /proc/cmdline'
 ```
 
-`6.18.55` ve `mf297d.storage_expand=1` görünmelidir. Hazırlama aracı daha önce doğrulanan kendi kurtarma imajını kullanır; başka firmware'in bakım dosyası karıştırılmaz.
+`6.18.55` (veya ilk kurulum kitinde `6.18.60`) ve `mf297d.storage_expand=1` görünmelidir. Hazırlama aracı daha önce doğrulanan kendi kurtarma imajını kullanır; başka firmware'in bakım dosyası karıştırılmaz.
 
 ## 4. PC Ubuntu: dosyaları RAM'e yeniden gönder ve geçişi uygula
 

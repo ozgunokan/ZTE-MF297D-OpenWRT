@@ -18,7 +18,7 @@ def migrate(raw):
     m=matches[0];assert m[1]==BOOTARGS,'unexpected NAND boot arguments'
     assert "setexpr.l mf297d_button *0x01020004 '&' 1;" in cmd[:m.start()],'RESET selection missing'
     assert 'owrt_recovery' in cmd[:m.start()] and 'owrt_recovery' in cmd[m.end():],'recovery branches missing'
-    assert 'bootipq' not in cmd and 'saveenv' not in cmd
+    assert 'bootipq' not in cmd[:m.end()] and 'saveenv' not in cmd
     newcmd=cmd[:m.start()]+MAIN_BOOT+cmd[m.end():]
     # Every RESET and fallback byte remains in its original position relative to main.
     assert newcmd.split(MAIN_BOOT)==[cmd[:m.start()],cmd[m.end():]]

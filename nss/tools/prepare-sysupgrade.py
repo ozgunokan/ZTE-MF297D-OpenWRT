@@ -29,7 +29,8 @@ def prepare(a):
     recovery=read('cat /dev/ubi0_7');assert sha(recovery)==volumes['7'];(out/'recovery.private.itb').write_bytes(recovery)
     assert all(h['valid'] for image in inspect(out/'recovery.private.itb')['images'].values() for h in image['hashes'])
     tree=fdt(recovery);image=lzma.decompress(tree['/images/kernel-1']['data'],format=lzma.FORMAT_ALONE)
-    assert b'Linux version 6.18.55 ' in image
+    km=re.search(rb'Linux version (6\.18\.(?:55|60)) ',image);assert km,'unsupported recovery kernel version'
+    kver=km.group(1).decode()
     original=tree['/images/fdt-1']['data'];d=fdt(original);d['/chosen']['mf297d,storage-expand']=b''
     for name,v in d.items():
         if '/partitions/partition@' not in name or 'reg' not in v or 'label' not in v:continue
@@ -40,7 +41,7 @@ def prepare(a):
     (out/'Image').write_bytes(image);(out/'maintenance.dtb').write_bytes(encode(d,original));(out/'bootargs.txt').write_text(args+'\n')
     def array(name,b):return 'static const unsigned char '+name+'[262144]={\n'+''.join(','.join(f'0x{x:02x}' for x in b[i:i+32])+',\n' for i in range(0,len(b),32))+'};\n'
     (out/'owner_env.h').write_text(array('probe_data',new)+array('before_data',old)+'\n#define EXPECTED_VAR_COUNT '+str(count)+'\nstatic const char expected_bootcmd[]='+json.dumps('bootcmd='+cmd)+';\n')
-    source=(P/'nss/src/env_transition.c').read_text().replace('expanded-layout-auto-crc','owner-bound-boot-transition')
+    source=(P/'nss/src/env_transition.c').read_text().replace('expanded-layout-auto-crc','owner-bound-boot-transition').replace('strcmp(uts.release,"6.18.55")',f'strcmp(uts.release,"{kver}")')
     (out/'env_transition.c').write_text(source)
     subprocess.run([a.cc,'-static','-Os','-s','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',str(out/'env_transition.c'),'-o',str(out/'env-helper')],check=True)
     subprocess.run([a.cc,'-static','-Os','-s','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',str(P/'nss/src/upgrade_guard.c'),'-o',str(out/'mf297d-upgrade-guard')],check=True)
@@ -50,7 +51,7 @@ def prepare(a):
     script='''#!/bin/sh
 set -eu
 cd /tmp/mf297d-bootstrap
-test "$(uname -r)" = 6.18.55
+test "$(uname -r)" = @KVER@
 grep -q mf297d.storage_expand=1 /proc/cmdline
 test "$(cat /sys/class/mtd/mtd21/name)" = maintenance_storage
 test "$(cat /sys/class/mtd/mtd21/flags)" = 0x400
@@ -75,7 +76,7 @@ ubidetach /dev/ubi_ctrl -d 0
 sync
 echo 'MF297D FIT boot migration verified; all UBI volumes and RESET recovery unchanged.'
 reboot
-'''.replace('@ENV_AFTER@',state['env_after'])
+'''.replace('@ENV_AFTER@',state['env_after']).replace('@KVER@',kver)
     (out/'apply-from-ram.sh').write_text(script);subprocess.run(['sh','-n',str(out/'apply-from-ram.sh')],check=True)
     (out/'volumes.before.sha256').write_text(''.join(h+'  /dev/ubi0_'+i+'\n' for i,h in volumes.items()))
     names=['env-helper','mf297d-upgrade-guard','prefix.before.sha256','volumes.before.sha256','apply-from-ram.sh']

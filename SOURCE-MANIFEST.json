@@ -58,8 +58,8 @@
       "sha256": "37cc01c4d2d90cd7b0ac3b44c5cfc7ae2f3f221cb2cfa8c53e380bdded9a48fc"
     },
     "docs/SYSUPGRADE-BOOTSTRAP.md": {
-      "bytes": 4651,
-      "sha256": "0f911f7deee4665fabeeb74d93ad7c61c888a873494789befe4053c6355a9a08"
+      "bytes": 4701,
+      "sha256": "841afdbf7de0b9052474175843b9ee840fd747917fa0a09e67de07e1f3574a32"
     },
     "docs/SYSUPGRADE.md": {
       "bytes": 4781,
@@ -450,8 +450,8 @@
       "sha256": "d2078d3dae08c7fcd2dbf8ae656db28f7ace75641fe336a128e2263f2571dfe2"
     },
     "nss/tests/test_sysupgrade.py": {
-      "bytes": 6257,
-      "sha256": "acec016279d6123bd28e86f217081bb38ad62aef1a345a57bb251ff5c6570d1e"
+      "bytes": 7530,
+      "sha256": "79ba918b618de653ef242b24642b9e9b33847c03b39176ede9a2522d113d856b"
     },
     "nss/tools/boot-maintenance.sh": {
       "bytes": 1577,
@@ -486,8 +486,8 @@
       "sha256": "3bef8b45c829c746031631837c6aa210d91a1eb738f7a5866e5be39ca72dfb84"
     },
     "nss/tools/prepare-sysupgrade.py": {
-      "bytes": 5883,
-      "sha256": "063d5c3a0815f2996794215e0bdb3c2afb9d19e5f6073ed758cebf54197cd7ea"
+      "bytes": 6072,
+      "sha256": "52547d00384181d6084bc892f08097227b58b6fbd6c4dd34ca07df66239156cc"
     },
     "nss/tools/prune-unused-feeds.py": {
       "bytes": 1319,
@@ -754,8 +754,8 @@
       "sha256": "829331e93019ffd4122a9edbcb4847ede8d2feaaaeedb4ead5fe076135b00b42"
     },
     "tools/upgrade_boot.py": {
-      "bytes": 2292,
-      "sha256": "c6743a7d5294878a4d56b316d0ef412c057419ea2853de6bb9c36281ed8f62dc"
+      "bytes": 2302,
+      "sha256": "d328aebfe1702296696f46048b30933328693c378cd0085147cb5cf0cbf7ecda"
     },
     "tools/verify_export.py": {
       "bytes": 1801,

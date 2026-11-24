@@ -55,6 +55,17 @@ def main(a):
         try:migrate(new+b'\xff'*262144)
         except AssertionError:checks.append('reject-repeated-migration')
         else:raise AssertionError('Repeated migration accepted')
+        # Stock first-install ENV ends with a trailing bootipq fallback after recovery.
+        before_stock="sleep 2; if setexpr.l mf297d_button *0x01020004 '&' 1; then if itest.l ${mf297d_button} == 0; then "+recovery+" fi; fi; "+oldmain+' '+recovery+" setenv mtdids ''; setenv mtdparts ''; setenv bootargs 'console=ttyMSM0,115200n8'; bootipq"
+        s_entries=[b'bootdelay=2',b'bootcmd='+before_stock.encode(),b'owner_fixture=unchanged'];s_body=(b'\0'.join(s_entries)+b'\0\0').ljust(262140,b'\0')
+        s_raw=struct.pack('<I',zlib.crc32(s_body))+s_body+b'\xff'*262144
+        _,s_new,s_cmd,_=migrate(s_raw);assert s_cmd.replace(MAIN_BOOT,oldmain)==before_stock
+        p.write_bytes(s_new+b'\xff'*262144);run('valid-migrated-stock-env',['--check-env',p])
+        bad_bootipq="sleep 2; bootipq; if setexpr.l mf297d_button *0x01020004 '&' 1; then if itest.l ${mf297d_button} == 0; then "+recovery+" fi; fi; "+oldmain+' '+recovery
+        b_entries=[b'bootdelay=2',b'bootcmd='+bad_bootipq.encode()];b_body=(b'\0'.join(b_entries)+b'\0\0').ljust(262140,b'\0')
+        try:migrate(struct.pack('<I',zlib.crc32(b_body))+b_body+b'\xff'*262144)
+        except AssertionError:checks.append('reject-leading-bootipq')
+        else:raise AssertionError('Leading bootipq accepted')
         simulation=r'''
 sleep() { :; }
 setexpr.l() { mf297d_button=$TEST_BUTTON; }
